@@ -6,8 +6,9 @@ import java.util.Map;
 
 public class GameState implements Serializable {
 
+    // TODO: can be inferred from playerlist
     private String serverPlayer;
-
+    // TODO: can be inferred from playerlist
     private String backupPlayer;
 
     private List<Pair<Integer, Integer>> coinsLocation;
@@ -18,16 +19,19 @@ public class GameState implements Serializable {
 
     private List<Pair<Integer, Integer>> availableLocation;
 
+    private List<String> playerList;
+
     public GameState() {
     }
 
-    public GameState(String serverPlayer, String backupPlayer, List<Pair<Integer, Integer>> coinsLocation, Map<String, Pair<Integer, Integer>> playersLocation, Map<String, Integer> playersScore, List<Pair<Integer, Integer>> availableLocation) {
+    public GameState(String serverPlayer, String backupPlayer, List<Pair<Integer, Integer>> coinsLocation, Map<String, Pair<Integer, Integer>> playersLocation, Map<String, Integer> playersScore, List<Pair<Integer, Integer>> availableLocation, List<String> playerList) {
         this.serverPlayer = serverPlayer;
         this.backupPlayer = backupPlayer;
         this.coinsLocation = coinsLocation;
         this.playersLocation = playersLocation;
         this.playersScore = playersScore;
         this.availableLocation = availableLocation;
+        this.playerList = playerList;
     }
 
     public String getServerPlayer() {
@@ -76,5 +80,13 @@ public class GameState implements Serializable {
 
     public void setAvailableLocation(List<Pair<Integer, Integer>> availableLocation) {
         this.availableLocation = availableLocation;
+    }
+
+    public List<String> getPlayerList() {
+        return playerList;
+    }
+
+    public void setPlayerList(List<String> playerList) {
+        this.playerList = playerList;
     }
 }

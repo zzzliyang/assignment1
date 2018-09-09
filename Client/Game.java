@@ -40,8 +40,9 @@
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Game {
 
@@ -57,22 +58,38 @@ public class Game {
         String host = (args.length < 1) ? null : args[0];
         GamePlayerInterface stub = null;
         try {
-            GamePlayer gamePlayer = new GamePlayer(id);
-            stub = (GamePlayerInterface) UnicastRemoteObject.exportObject(gamePlayer, 0);
             Registry registry = LocateRegistry.getRegistry(host);
             TrackerInterface tracker = (TrackerInterface) registry.lookup("TRACKER");
-            gamePlayer.joinGame(tracker, stub);
+            GamePlayer gamePlayer = new GamePlayer(id, tracker);
+            stub = (GamePlayerInterface) UnicastRemoteObject.exportObject(gamePlayer, 0);
+            gamePlayer.joinGame(stub);
+            ExecutorService executor = Executors.newFixedThreadPool(1);
+            Runnable runnable = () -> {
+                try {
+                    //TimeUnit.MILLISECONDS.wait(500);
+                    while (true) {
+                        Thread.sleep(500);
+                        gamePlayer.pingServer();
+                    }
+                } catch (InterruptedException e) {
+                    System.out.println("Pinging service interrupted...");
+                }
+            };
+            executor.execute(runnable);
             Scanner keys = new Scanner(System.in);
             System.out.println("User action: ");
             int action = keys.nextInt();
-            while(action!=9){
-                gamePlayer.move(action);
+            int[] acceptableAction = new int[]{0, 1, 2, 3, 4, 9};
+            while (true) {
+                if (action == 0 || action == 1 || action == 2 || action == 3 || action == 4 || action == 9) {
+                    gamePlayer.move(action);
+                    if (action == 9)
+                        System.exit(0);
+                } else
+                    System.out.println("Invalid input!");
                 System.out.println("User action: ");
                 action = keys.nextInt();
             }
-            System.out.println("User exit!");
-            System.exit(0);
-
 //	    hello.setAnother(stub);
         } catch (Exception e) {
             System.err.println("Client exception: " + e.toString());

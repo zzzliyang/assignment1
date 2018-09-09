@@ -46,8 +46,12 @@ public interface TrackerInterface extends Remote {
     String sayHello() throws RemoteException;
 
     GamePlayerInterface getPlayer(String id) throws RemoteException;
+
     NewJoinerPack addPlayer(String id, GamePlayerInterface player) throws RemoteException;
+
     void removePlayer(String id) throws RemoteException;
+
     void updateList(List<String> players) throws RemoteException;
 
+    void notifyOnServerChange(List<String> players) throws RemoteException;
 }

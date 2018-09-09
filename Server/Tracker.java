@@ -94,6 +94,11 @@ public class Tracker implements TrackerInterface {
         }
     }
 
+    @Override
+    public void notifyOnServerChange(List<String> players) throws RemoteException {
+        this.playerList = players;
+    }
+
     public static void main(String args[]) {
         TrackerInterface stub = null;
         Registry registry = null;

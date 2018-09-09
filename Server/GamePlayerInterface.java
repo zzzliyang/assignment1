@@ -8,14 +8,15 @@ import java.util.List;
  * Created by Rentong on 8/9/2018.
  */
 public interface GamePlayerInterface extends Remote {
-    void joinGame(TrackerInterface tracker) throws RemoteException;
-    void refresh() throws RemoteException;
-    void exit() throws RemoteException;
-    void move(int direction) throws RemoteException;
+    default void isAlive() throws RemoteException {}
+    void joinGame(TrackerInterface tracker, GamePlayerInterface stub) throws RemoteException;
+//    void refresh() throws RemoteException;
+//    void exit() throws RemoteException;
+    GameState movePlayer(String id, int direction) throws RemoteException;
     void pingServer() throws RemoteException;
     void pingBackup() throws RemoteException;
-    GamePlayerInterface getServer() throws RemoteException;
-    GamePlayerInterface getBackup() throws RemoteException;
+//    GamePlayerInterface getServer() throws RemoteException;
+//    GamePlayerInterface getBackup() throws RemoteException;
     List<String> refreshListFromTracker(int delay) throws RemoteException;
     Pair<Integer, Integer> generateLocation() throws RemoteException;
     void notifyBackup() throws RemoteException;

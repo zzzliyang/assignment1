@@ -10,17 +10,20 @@ import java.util.concurrent.ThreadLocalRandom;
 public class GamePlayer implements GamePlayerInterface {
     protected String id;
     protected int N, K;
+    // TODO: can be removed
     protected int coins;
+    // TODO: can be removed
     protected Pair<Integer, Integer> location;
     protected boolean isServer;
     protected boolean isBackup;
-    protected List<String> playerList;
     protected GamePlayerInterface serverPlayer;
     protected GamePlayerInterface backupPlayer;
+    protected TrackerInterface tracker;
     protected GameState gameState;
 
-    public GamePlayer(String id) {
+    public GamePlayer(String id, TrackerInterface tracker) {
         this.id = id;
+        this.tracker = tracker;
     }
 
     public void setId(String id) {
@@ -75,14 +78,6 @@ public class GamePlayer implements GamePlayerInterface {
         isBackup = backup;
     }
 
-    public List<String> getPlayerList() {
-        return playerList;
-    }
-
-    public void setPlayerList(List<String> playerList) {
-        this.playerList = playerList;
-    }
-
     public GamePlayerInterface getServerPlayer() {
         return serverPlayer;
     }
@@ -105,10 +100,12 @@ public class GamePlayer implements GamePlayerInterface {
     }
 
     @Override
-    public GameState newPlayerJoined(String newJoinerId) {
-        this.playerList.add(newJoinerId);
-        if (this.playerList.size() == 2) {
+    public GameState newPlayerJoined(String newJoinerId) throws RemoteException {
+        List<String> playerList = this.gameState.getPlayerList();
+        playerList.add(newJoinerId);
+        if (playerList.size() == 2) {
             this.gameState.setBackupPlayer(newJoinerId);
+            this.setBackupPlayer(tracker.getPlayer(newJoinerId));
         }
         List<Pair<Integer, Integer>> availableLocation = this.gameState.getAvailableLocation();
         int random = ThreadLocalRandom.current().nextInt(0, availableLocation.size() + 1);
@@ -125,11 +122,10 @@ public class GamePlayer implements GamePlayerInterface {
     }
 
     @Override
-    public void joinGame(TrackerInterface tracker, GamePlayerInterface stub) throws RemoteException {
+    public void joinGame(GamePlayerInterface stub) throws RemoteException {
         System.out.println("Joining game...");
         NewJoinerPack newJoinerPack = tracker.addPlayer(id, stub);
         List<String> players = newJoinerPack.getPlayers();
-        this.playerList = players;
         this.N = newJoinerPack.getN();
         this.K = newJoinerPack.getK();
         if (players.size() == 1) {
@@ -146,42 +142,93 @@ public class GamePlayer implements GamePlayerInterface {
     }
 
     private void generateTreasure() {
-
+        List<Pair<Integer, Integer>> availableLocation = this.gameState.getAvailableLocation();
+        int random = ThreadLocalRandom.current().nextInt(0, availableLocation.size() + 1);
+        Pair<Integer, Integer> newLocation = availableLocation.get(random);
+        this.gameState.getCoinsLocation().add(newLocation);
+        this.gameState.getAvailableLocation().remove(newLocation);
+        System.out.println("New coin generated at " + newLocation.getKey() + ", " + newLocation.getValue());
     }
 
     @Override
-    public void refresh() {
-
+    public GameState movePlayer(String id, int direction) throws RemoteException {
+        Map<String, Pair<Integer, Integer>> playersLocation = gameState.getPlayersLocation();
+        Pair<Integer, Integer> currentLocation = playersLocation.get(id);
+        Map<String, Integer> playersScore = gameState.getPlayersScore();
+        List<Pair<Integer, Integer>> availableLocation = gameState.getAvailableLocation();
+        List<Pair<Integer, Integer>> coinsLocation = gameState.getCoinsLocation();
+        String serverPlayer = gameState.getServerPlayer();
+        String backupPlayer = gameState.getBackupPlayer();
+        Pair<Integer, Integer> newLocation = null;
+        switch (direction) {
+            case 0:
+                return gameState;
+            case 1:
+                newLocation = new Pair<>(currentLocation.getKey(), currentLocation.getValue() - 1);
+                break;
+            case 2:
+                newLocation = new Pair<>(currentLocation.getKey() + 1, currentLocation.getValue());
+                break;
+            case 3:
+                newLocation = new Pair<>(currentLocation.getKey(), currentLocation.getValue() + 1);
+                break;
+            case 4:
+                newLocation = new Pair<>(currentLocation.getKey() - 1, currentLocation.getValue());
+                break;
+            case 9: //remove player
+                List<String> playerList = gameState.getPlayerList();
+                availableLocation.add(currentLocation);
+                playersLocation.remove(id);
+                playersScore.remove(id);
+                playerList.remove(id);
+                if (serverPlayer.equals(id)) {
+                    gameState.setServerPlayer(backupPlayer);
+                    gameState.setBackupPlayer(playerList.size() > 1 ? playerList.get(1) : null);
+                } else if (backupPlayer.equals(id)) {
+                    gameState.setBackupPlayer(playerList.size() > 1 ? playerList.get(1) : null);
+                }
+                notifyBackup();
+                return gameState;
+        }
+        int coinIndex = coinsLocation.indexOf(newLocation);
+        if (coinIndex >= 0) {
+            System.out.println("Moving to a coin location...");
+            playersScore.put(id, playersScore.get(id) + 1);
+            coinsLocation.remove(coinIndex);
+            generateTreasure();
+        } else {
+            int index = availableLocation.indexOf(newLocation);
+            if (index < 0) {
+                System.out.println("Move is not valid. Returning current game state without doing move...");
+                return gameState;
+            }
+            availableLocation.remove(index);
+        }
+        availableLocation.add(currentLocation);
+        playersLocation.put(id, newLocation);
+        notifyBackup();
+        return gameState;
     }
 
-    @Override
-    public void exit() {
-
-    }
-
-    @Override
-    public void move(int direction) {
-
+    public void move(int direction) throws RemoteException {
+        GameState refresh = serverPlayer.movePlayer(id, direction);
+        this.setGameState(refresh);
+        printGameState();
     }
 
     @Override
     public void pingServer() {
-
+        try {
+            serverPlayer.isAlive();
+            System.out.println("Server is alive...");
+        } catch (RemoteException e) {
+            System.out.println("Server down...");
+        }
     }
 
     @Override
     public void pingBackup() {
 
-    }
-
-    @Override
-    public GamePlayerInterface getServer() {
-        return null;
-    }
-
-    @Override
-    public GamePlayerInterface getBackup() {
-        return null;
     }
 
     @Override
@@ -213,19 +260,40 @@ public class GamePlayer implements GamePlayerInterface {
         availableLocations.remove(random);
         Map<String, Integer> playersScore = new HashMap<>();
         playersScore.put(id, 0);
+        List<String> playerList = new ArrayList<>();
+        playerList.add(id);
         this.gameState = new GameState(
                 id,
                 null,
                 coinsLocation,
                 playersLocation,
                 playersScore,
-                availableLocations
+                availableLocations,
+                playerList
         );
     }
 
     @Override
-    public void notifyBackup() {
+    public void notifyBackup() throws RemoteException {
+        if (backupPlayer != null) {
+            backupPlayer.updateGameStateFromServer(gameState);
+        }
+    }
 
+    @Override
+    public boolean updateGameStateFromServer(GameState gameState) {
+        try {
+            this.gameState = gameState;
+            // This backupd server has been promoted
+            if (gameState.getServerPlayer().equals(id)) {
+                this.serverPlayer = this;
+                tracker.notifyOnServerChange(gameState.getPlayerList());
+                this.backupPlayer = tracker.getPlayer(gameState.getBackupPlayer());
+            }
+        } catch (Exception e) {
+            System.out.println("Not bakup server...");
+        }
+        return false;
     }
 
     @Override
@@ -239,39 +307,43 @@ public class GamePlayer implements GamePlayerInterface {
     }
 
     private void printGameState() {
-        Map<Pair<Integer,Integer>, String> locationMap = new HashMap<>();
-        List<Pair<Integer,Integer>> coinLocList = gameState.getCoinsLocation();
-        Map<String, Pair<Integer,Integer>> playerLocMap = gameState.getPlayersLocation();
-        Map<String,Integer> scores = gameState.getPlayersScore();
-        for(int i=0;i<N;i++){
-            for(int j=0;j<N;j++){
-                Pair<Integer,Integer> key = new Pair<>(i,j);
+        Map<Pair<Integer, Integer>, String> locationMap = new HashMap<>();
+        List<Pair<Integer, Integer>> coinLocList = gameState.getCoinsLocation();
+        Map<String, Pair<Integer, Integer>> playerLocMap = gameState.getPlayersLocation();
+        Map<String, Integer> scores = gameState.getPlayersScore();
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                Pair<Integer, Integer> key = new Pair<>(i, j);
                 locationMap.put(key, "  ");
             }
         }
-        coinLocList.forEach(k->locationMap.put(k,"* ")); //coins with *
-        playerLocMap.entrySet().forEach(entry-> locationMap.put(entry.getValue(),entry.getKey())); //player with 2-char id
+        coinLocList.forEach(k -> locationMap.put(k, "* ")); //coins with *
+        playerLocMap.entrySet().forEach(entry -> locationMap.put(entry.getValue(), entry.getKey())); //player with 2-char id
 
         System.out.println("Game server is :" + gameState.getServerPlayer());
         System.out.println("Backup server is :" + gameState.getBackupPlayer());
-        System.out.println("Current player: "+ id + ", current score: " + coins);
-        for(int i=0;i<3*N+4;i++){ System.out.print("=");}
+        System.out.println("Current player: " + id + ", current score: " + coins);
+        for (int i = 0; i < 3 * N + 4; i++) {
+            System.out.print("=");
+        }
         System.out.println();
-        for(int i=0;i<N;i++){
+        for (int i = 0; i < N; i++) {
             System.out.print("||");
-            for(int j=0;j<N;j++){
-                Pair<Integer,Integer> key = new Pair<>(i,j);
+            for (int j = 0; j < N; j++) {
+                Pair<Integer, Integer> key = new Pair<>(i, j);
                 System.out.print(locationMap.get(key));
                 System.out.print("|");
             }
             System.out.print("|");
             System.out.println();
         }
-        for(int i=0;i<3*N+4;i++){ System.out.print("=");}
+        for (int i = 0; i < 3 * N + 4; i++) {
+            System.out.print("=");
+        }
         System.out.println();
 
         System.out.println("Player scores:");
-        scores.entrySet().forEach(s->System.out.println("Player id: "+ s.getKey() + ", score: " + s.getValue()));
+        scores.entrySet().forEach(s -> System.out.println("Player id: " + s.getKey() + ", score: " + s.getValue()));
         System.out.println("End of player scores!");
     }
 }
