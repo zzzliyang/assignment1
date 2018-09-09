@@ -52,7 +52,7 @@ public class Game {
             System.out.println("Wrong number of parameters...exiting");
             System.exit(0);
         }
-        String id = args[3];
+        String id = args[2];
         String host = (args.length < 1) ? null : args[0];
         GamePlayerInterface stub = null;
         try {
@@ -60,7 +60,7 @@ public class Game {
             stub = (GamePlayerInterface) UnicastRemoteObject.exportObject(gamePlayer, 0);
             Registry registry = LocateRegistry.getRegistry(host);
             TrackerInterface tracker = (TrackerInterface) registry.lookup("TRACKER");
-            gamePlayer.joinGame(tracker);
+            gamePlayer.joinGame(tracker, stub);
 
 //	    hello.setAnother(stub);
         } catch (Exception e) {

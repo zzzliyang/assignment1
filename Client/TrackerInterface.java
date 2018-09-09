@@ -35,18 +35,19 @@
  * intended for use in the design, construction, operation or 
  * maintenance of any nuclear facility.
  */
-//package example.hello;
+//package Server;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.List;
 
 public interface TrackerInterface extends Remote {
+
     String sayHello() throws RemoteException;
-//    Remote getAnother() throws RemoteException;
-//    void setAnother(Remote another) throws RemoteException;
+
     GamePlayerInterface getPlayer(String id) throws RemoteException;
-    NewJoinerPack addPlayer(GamePlayerInterface player) throws RemoteException;
+    NewJoinerPack addPlayer(String id, GamePlayerInterface player) throws RemoteException;
     void removePlayer(String id) throws RemoteException;
     void updateList(List<String> players) throws RemoteException;
+
 }

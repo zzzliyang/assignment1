@@ -100,13 +100,34 @@ public class GamePlayer implements GamePlayerInterface {
     }
 
     @Override
-    public String getId() {
-        return id;
+    public GameState getGameState() {
+        return gameState;
     }
 
     @Override
-    public void joinGame(TrackerInterface tracker) throws RemoteException {
-        NewJoinerPack newJoinerPack = tracker.addPlayer(this);
+    public GameState newPlayerJoined(String newJoinerId) {
+        this.playerList.add(newJoinerId);
+        if (this.playerList.size() == 2) {
+            this.gameState.setBackupPlayer(newJoinerId);
+        }
+        List<Pair<Integer, Integer>> availableLocation = this.gameState.getAvailableLocation();
+        int random = ThreadLocalRandom.current().nextInt(0, availableLocation.size() + 1);
+        Map<String, Pair<Integer, Integer>> playersLocation = this.gameState.getPlayersLocation();
+        playersLocation.put(newJoinerId, availableLocation.get(random));
+        availableLocation.remove(random);
+        Map<String, Integer> playersScore = this.gameState.getPlayersScore();
+        playersScore.put(newJoinerId, 0);
+        return gameState;
+    }
+
+    public void setGameState(GameState gameState) {
+        this.gameState = gameState;
+    }
+
+    @Override
+    public void joinGame(TrackerInterface tracker, GamePlayerInterface stub) throws RemoteException {
+        System.out.println("Joining game...");
+        NewJoinerPack newJoinerPack = tracker.addPlayer(id, stub);
         List<String> players = newJoinerPack.getPlayers();
         this.playerList = players;
         this.N = newJoinerPack.getN();
@@ -114,13 +135,14 @@ public class GamePlayer implements GamePlayerInterface {
         if (players.size() == 1) {
             this.setServer(true);
             this.serverPlayer = this;
-            this.initiateTreasury();
-            this.generateLocation();
-        } else if (players.size() == 2) {
-            this.setBackup(true);
+            System.out.println("This is server, initiating game state...");
+            initiateGameState();
+        } else {
+            System.out.println("This is player, getting game state from server...");
+            this.serverPlayer = tracker.getPlayer(players.get(0));
+            this.gameState = serverPlayer.newPlayerJoined(id);
         }
-        this.serverPlayer = tracker.getPlayer(players.get(0));
-        this.backupPlayer = tracker.getPlayer(players.get(1));
+        printGameState();
     }
 
     private void generateTreasure() {
@@ -172,7 +194,7 @@ public class GamePlayer implements GamePlayerInterface {
         return null;
     }
 
-    public void initiateTreasury() {
+    public void initiateGameState() {
         List<Pair<Integer, Integer>> availableLocations = new ArrayList<>();
         List<Pair<Integer, Integer>> coinsLocation = new ArrayList<>();
         for (int i = 0; i < N; i++) {
@@ -185,6 +207,20 @@ public class GamePlayer implements GamePlayerInterface {
             coinsLocation.add(availableLocations.get(random));
             availableLocations.remove(random);
         }
+        int random = ThreadLocalRandom.current().nextInt(0, availableLocations.size() + 1);
+        Map<String, Pair<Integer, Integer>> playersLocation = new HashMap<>();
+        playersLocation.put(id, availableLocations.get(random));
+        availableLocations.remove(random);
+        Map<String, Integer> playersScore = new HashMap<>();
+        playersScore.put(id, 0);
+        this.gameState = new GameState(
+                id,
+                null,
+                coinsLocation,
+                playersLocation,
+                playersScore,
+                availableLocations
+        );
     }
 
     @Override
@@ -202,7 +238,7 @@ public class GamePlayer implements GamePlayerInterface {
 
     }
 
-    public void printGameStatus(GameState gameState) {
+    private void printGameState() {
         Map<Pair<Integer,Integer>, String> locationMap = new HashMap<>();
         List<Pair<Integer,Integer>> coinLocList = gameState.getCoinsLocation();
         Map<String, Pair<Integer,Integer>> playerLocMap = gameState.getPlayersLocation();

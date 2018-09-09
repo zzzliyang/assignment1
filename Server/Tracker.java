@@ -68,12 +68,14 @@ public class Tracker implements TrackerInterface {
     }
 
     @Override
-    public NewJoinerPack addPlayer(GamePlayerInterface player) throws RemoteException {
+    public NewJoinerPack addPlayer(String id, GamePlayerInterface player) throws RemoteException {
+        System.out.println("Player + " + id + " is joining...");
         if (player != null) {
-            String id = player.getId();
             playerList.add(id);
             playerMap.put(id, player);
         }
+        System.out.println("Current players: " + playerList.size());
+        for (String playerName: playerList) System.out.println("--------------" + playerName + "--------------");
         return new NewJoinerPack(playerList, N, K);
     }
 
