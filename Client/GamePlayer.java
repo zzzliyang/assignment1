@@ -255,18 +255,19 @@ public class GamePlayer implements GamePlayerInterface {
         System.out.println("Game server is :" + gameState.getServerPlayer());
         System.out.println("Backup server is :" + gameState.getBackupPlayer());
         System.out.println("Current player: "+ id + ", current score: " + coins);
-        for(int i=0;i<2*N+4;i++){ System.out.print("=");}
+        for(int i=0;i<3*N+4;i++){ System.out.print("=");}
         System.out.println();
         for(int i=0;i<N;i++){
             System.out.print("||");
             for(int j=0;j<N;j++){
                 Pair<Integer,Integer> key = new Pair<>(i,j);
                 System.out.print(locationMap.get(key));
+                System.out.print("|");
             }
-            System.out.print("||");
+            System.out.print("|");
             System.out.println();
         }
-        for(int i=0;i<2*N+4;i++){ System.out.print("=");}
+        for(int i=0;i<3*N+4;i++){ System.out.print("=");}
         System.out.println();
 
         System.out.println("Player scores:");

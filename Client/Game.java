@@ -41,6 +41,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.List;
+import java.util.Scanner;
 
 public class Game {
 
@@ -61,6 +62,16 @@ public class Game {
             Registry registry = LocateRegistry.getRegistry(host);
             TrackerInterface tracker = (TrackerInterface) registry.lookup("TRACKER");
             gamePlayer.joinGame(tracker, stub);
+            Scanner keys = new Scanner(System.in);
+            System.out.println("User action: ");
+            int action = keys.nextInt();
+            while(action!=9){
+                gamePlayer.move(action);
+                System.out.println("User action: ");
+                action = keys.nextInt();
+            }
+            System.out.println("User exit!");
+            System.exit(0);
 
 //	    hello.setAnother(stub);
         } catch (Exception e) {
