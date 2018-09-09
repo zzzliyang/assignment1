@@ -40,26 +40,32 @@
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.List;
 
 public class Game {
 
-    private Game() {}
+    private Game() {
+    }
 
     public static void main(String[] args) {
+        if (args.length != 3) {
+            System.out.println("Wrong number of parameters...exiting");
+            System.exit(0);
+        }
+        String id = args[3];
+        String host = (args.length < 1) ? null : args[0];
+        GamePlayerInterface stub = null;
+        try {
+            GamePlayer gamePlayer = new GamePlayer(id);
+            stub = (GamePlayerInterface) UnicastRemoteObject.exportObject(gamePlayer, 0);
+            Registry registry = LocateRegistry.getRegistry(host);
+            TrackerInterface tracker = (TrackerInterface) registry.lookup("TRACKER");
+            gamePlayer.joinGame(tracker);
 
-	String host = (args.length < 1) ? null : args[0];
-	GamePlayerInterface stub = null;
-	try {
-		GamePlayer obj = new GamePlayer();
-		stub = (GamePlayerInterface) UnicastRemoteObject.exportObject(obj, 0);
-	    Registry registry = LocateRegistry.getRegistry(host);
-	    TrackerInterface hello = (TrackerInterface) registry.lookup("Hello");
-	    String response = hello.sayHello();
-	    System.out.println("response: " + response);
 //	    hello.setAnother(stub);
-	} catch (Exception e) {
-	    System.err.println("Client exception: " + e.toString());
-	    e.printStackTrace();
-	}
+        } catch (Exception e) {
+            System.err.println("Client exception: " + e.toString());
+            e.printStackTrace();
+        }
     }
 }

@@ -48,74 +48,74 @@ import java.util.Map;
 
 public class Tracker implements TrackerInterface {
 
-	protected int N;
-	protected int K;
-	protected List<String> playerList = new ArrayList<>();
-	protected Map<String, GamePlayerInterface> playerMap = new HashMap<>();
+    protected int N;
+    protected int K;
+    protected List<String> playerList = new ArrayList<>();
+    protected Map<String, GamePlayerInterface> playerMap = new HashMap<>();
 
-	public Tracker(int n, int k) {
-		N = n;
-		K = k;
-	}
-
-    public String sayHello() {
-	return "Welcome to the game!";
+    public Tracker(int n, int k) {
+        N = n;
+        K = k;
     }
 
-	@Override
-	public GamePlayerInterface getPlayer(String id) throws RemoteException {
-		return playerMap.get(id);
-	}
+    public String sayHello() {
+        return "Welcome to the game!";
+    }
 
-	@Override
-	public List<String> addPlayer(GamePlayerInterface player) throws RemoteException {
-		if(player!=null){
-			String id = player.getId();
-			playerList.add(id);
-			playerMap.put(id, player);
-		}
-		return playerList;
-	}
+    @Override
+    public GamePlayerInterface getPlayer(String id) throws RemoteException {
+        return playerMap.get(id);
+    }
 
-	@Override
-	public void removePlayer(String id) throws RemoteException {
-		playerList.remove(id);
-		playerMap.remove(id);
-	}
+    @Override
+    public NewJoinerPack addPlayer(GamePlayerInterface player) throws RemoteException {
+        if (player != null) {
+            String id = player.getId();
+            playerList.add(id);
+            playerMap.put(id, player);
+        }
+        return new NewJoinerPack(playerList, N, K);
+    }
 
-	@Override
-	public void updateList(List<String> players) throws RemoteException {
-		playerList = players==null ? new ArrayList<>() : players;
-		for(String id : playerMap.keySet()){
-			if(!playerList.contains(id))
-				playerMap.remove(id);
-		}
-	}
+    @Override
+    public void removePlayer(String id) throws RemoteException {
+        playerList.remove(id);
+        playerMap.remove(id);
+    }
 
-	public static void main(String args[]) {
-		TrackerInterface stub = null;
-		Registry registry = null;
-		if (args.length != 3) {
-			System.out.println("Wrong number of parameters...exiting");
-			System.exit(0);
-		}
-		try {
-			String n = args[1], k = args[2];
-			Tracker obj = new Tracker(Integer.valueOf(n), Integer.valueOf(k));
-			stub = (TrackerInterface) UnicastRemoteObject.exportObject(obj, 0);
-			registry = LocateRegistry.getRegistry();
-			registry.bind("Hello", stub);
+    @Override
+    public void updateList(List<String> players) throws RemoteException {
+        playerList = players == null ? new ArrayList<>() : players;
+        for (String id : playerMap.keySet()) {
+            if (!playerList.contains(id))
+                playerMap.remove(id);
+        }
+    }
 
-			System.err.println("Server ready");
-		} catch (Exception e) {
-			try{
-			registry.unbind("Hello");
-			registry.bind("Hello",stub);
-				System.err.println("Server ready");
-			}catch(Exception ee){
-			System.err.println("Server exception: " + ee.toString());
-				ee.printStackTrace();
-			}
-		}
+    public static void main(String args[]) {
+        TrackerInterface stub = null;
+        Registry registry = null;
+        if (args.length != 3) {
+            System.out.println("Wrong number of parameters...exiting");
+            System.exit(0);
+        }
+        try {
+            String n = args[1], k = args[2];
+            Tracker obj = new Tracker(Integer.valueOf(n), Integer.valueOf(k));
+            stub = (TrackerInterface) UnicastRemoteObject.exportObject(obj, 0);
+            registry = LocateRegistry.getRegistry();
+            registry.bind("TRACKER", stub);
+
+            System.err.println("Server ready");
+        } catch (Exception e) {
+            try {
+                registry.unbind("TRACKER");
+                registry.bind("TRACKER", stub);
+                System.err.println("Server ready");
+            } catch (Exception ee) {
+                System.err.println("Server exception: " + ee.toString());
+                ee.printStackTrace();
+            }
+        }
     }
 }

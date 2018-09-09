@@ -1,6 +1,7 @@
 import javafx.util.Pair;
 
 import java.rmi.Remote;
+import java.rmi.RemoteException;
 import java.util.List;
 
 /**
@@ -9,7 +10,7 @@ import java.util.List;
 public interface GamePlayerInterface extends Remote {
     String getId();
 
-    void joinGame();
+    void joinGame(TrackerInterface tracker) throws RemoteException;
     void refresh();
     void exit();
     void move(int direction);
@@ -20,7 +21,6 @@ public interface GamePlayerInterface extends Remote {
     List<String> refreshListFromTracker(int delay);
 
     Pair<Integer, Integer> generateLocation();
-    void initiateTreasury(int n, int k);
     void notifyBackup();
     void updateTrackerWithPlayerList(List<String> currentPlayers);
 //    void updatePlayerState()
