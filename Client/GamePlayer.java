@@ -220,9 +220,9 @@ public class GamePlayer implements GamePlayerInterface {
     public void pingServer() {
         try {
             serverPlayer.isAlive();
-            System.out.println("Server is alive...");
+            //System.out.println("Server is alive...");
         } catch (RemoteException e) {
-            System.out.println("Server down...");
+            //System.out.println("Server down...");
         }
     }
 
@@ -250,11 +250,11 @@ public class GamePlayer implements GamePlayerInterface {
             }
         }
         for (int i = 0; i < K; i++) {
-            int random = ThreadLocalRandom.current().nextInt(0, availableLocations.size() + 1);
+            int random = ThreadLocalRandom.current().nextInt(0, availableLocations.size());
             coinsLocation.add(availableLocations.get(random));
             availableLocations.remove(random);
         }
-        int random = ThreadLocalRandom.current().nextInt(0, availableLocations.size() + 1);
+        int random = ThreadLocalRandom.current().nextInt(0, availableLocations.size());
         Map<String, Pair<Integer, Integer>> playersLocation = new HashMap<>();
         playersLocation.put(id, availableLocations.get(random));
         availableLocations.remove(random);
