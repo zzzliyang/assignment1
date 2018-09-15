@@ -305,9 +305,9 @@ public class GamePlayer implements GamePlayerInterface {
 
   private void printGameState() {
     Map<Pair<Integer, Integer>, String> locationMap = new HashMap<>();
-    List<Pair<Integer, Integer>> coinLocList = gameState.getCoinsLocation();
-    Map<String, Pair<Integer, Integer>> playerLocMap = gameState.getPlayersLocation();
-    Map<String, Integer> scores = gameState.getPlayersScore();
+    List<Pair<Integer, Integer>> coinLocList = new ArrayList<>(gameState.getCoinsLocation());
+    Map<String, Pair<Integer, Integer>> playerLocMap = new HashMap<>(gameState.getPlayersLocation());
+    Map<String, Integer> scores = new HashMap<>(gameState.getPlayersScore());
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
         Pair<Integer, Integer> key = new Pair<>(i, j);
@@ -323,7 +323,7 @@ public class GamePlayer implements GamePlayerInterface {
     System.out.println("Game server is :" + gameState.getServerPlayer());
     System.out.println("Backup server is :" + gameState.getBackupPlayer());
     System.out.println("Current player: " + id + ", current score: " + coins);
-    for (int i = 0; i < 3 * N + 4; i++) {
+    for (int i = 0; i < 3 * N + 3; i++) {
       System.out.print("=");
     }
     System.out.println();
@@ -337,7 +337,7 @@ public class GamePlayer implements GamePlayerInterface {
       System.out.print("|");
       System.out.println();
     }
-    for (int i = 0; i < 3 * N + 4; i++) {
+    for (int i = 0; i < 3 * N + 3; i++) {
       System.out.print("=");
     }
     System.out.println();
