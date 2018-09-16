@@ -48,4 +48,5 @@ public interface TrackerInterface extends Remote {
     void removePlayer(String id) throws RemoteException;
     void updateList(List<String> players) throws RemoteException;
     void notifyOnServerChange(List<String> playerList) throws RemoteException;
+    List<String> getPlayerList() throws RemoteException;
 }

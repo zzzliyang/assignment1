@@ -37,6 +37,7 @@
  */
 //package example.hello;
 
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
@@ -63,19 +64,33 @@ public class Game {
             GamePlayer gamePlayer = new GamePlayer(id, tracker);
             stub = (GamePlayerInterface) UnicastRemoteObject.exportObject(gamePlayer, 0);
             gamePlayer.joinGame(stub);
-            ExecutorService executor = Executors.newFixedThreadPool(1);
-            Runnable runnable = () -> {
+            ExecutorService executor = Executors.newFixedThreadPool(2);
+            Runnable runnablePingServer = () -> {
                 try {
                     //TimeUnit.MILLISECONDS.wait(500);
                     while (true) {
                         Thread.sleep(500);
                         gamePlayer.pingServer();
+                        Thread.sleep(500);
+                        gamePlayer.pingBackup();
                     }
-                } catch (InterruptedException e) {
+                } catch (InterruptedException | RemoteException e) {
                     System.out.println("Pinging service interrupted...");
                 }
             };
-            executor.execute(runnable);
+            Runnable runnableReceivePing = () -> {
+                try {
+                    //TimeUnit.MILLISECONDS.wait(500);
+                    while (true) {
+                        Thread.sleep(2001);
+                        gamePlayer.receivePing();
+                    }
+                } catch (InterruptedException | RemoteException e) {
+                    System.out.println("Pinging service interrupted...");
+                }
+            };
+            executor.execute(runnablePingServer);
+            executor.execute(runnableReceivePing);
             Scanner keys = new Scanner(System.in);
             System.out.println("User action: ");
             int action = keys.nextInt();

@@ -41,10 +41,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class Tracker implements TrackerInterface {
 
@@ -88,15 +85,21 @@ public class Tracker implements TrackerInterface {
     @Override
     public void updateList(List<String> players) throws RemoteException {
         playerList = players == null ? new ArrayList<>() : players;
-        for (String id : playerMap.keySet()) {
-            if (!playerList.contains(id))
+        Set<String> set = new HashSet<>(playerMap.keySet());
+        set.forEach(id->{
+            if(!playerList.contains(id))
                 playerMap.remove(id);
-        }
+        });
     }
 
     @Override
     public void notifyOnServerChange(List<String> players) throws RemoteException {
         this.playerList = players;
+    }
+
+    @Override
+    public List<String> getPlayerList() throws RemoteException {
+        return playerList;
     }
 
     public static void main(String args[]) {
