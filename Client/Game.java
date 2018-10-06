@@ -37,13 +37,20 @@
  */
 //package example.hello;
 
+import javax.swing.*;
+import java.awt.*;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.IntStream;
 
 public class Game {
 
@@ -51,6 +58,7 @@ public class Game {
     }
 
     public static void main(String[] args) {
+        //System.setProperty("java.rmi.server.hostname","localhost");
         if (args.length != 3) {
             System.out.println("Wrong number of parameters...exiting");
             System.exit(0);
@@ -59,37 +67,57 @@ public class Game {
         String host = (args.length < 1) ? null : args[0];
         GamePlayerInterface stub = null;
         try {
+            JFrame jFrame= new JFrame("Player " + id);
+            JTextArea textArea=new JTextArea();
+            JScrollPane panel = new JScrollPane(textArea);
+            textArea.setFont(new Font("Consolas", Font.BOLD, 18));
+            jFrame.add(panel);
+            jFrame.setSize(800,800);
+            panel.setSize(783,750);
+            jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+            jFrame.setLayout(null);
+            jFrame.setVisible(true);
             Registry registry = LocateRegistry.getRegistry(host);
             TrackerInterface tracker = (TrackerInterface) registry.lookup("TRACKER");
-            GamePlayer gamePlayer = new GamePlayer(id, tracker);
+            GamePlayer gamePlayer = new GamePlayer(id, tracker, textArea);
             stub = (GamePlayerInterface) UnicastRemoteObject.exportObject(gamePlayer, 0);
             gamePlayer.joinGame(stub);
-            ExecutorService executor = Executors.newFixedThreadPool(2);
+            ExecutorService executor = Executors.newFixedThreadPool(3);
             Runnable runnablePingServer = () -> {
                 try {
-                    //TimeUnit.MILLISECONDS.wait(500);
                     while (true) {
-                        Thread.sleep(500);
                         gamePlayer.pingServer();
-                        Thread.sleep(500);
-                        gamePlayer.pingBackup();
+                        Thread.sleep(1000);
                     }
                 } catch (InterruptedException | RemoteException e) {
                     System.out.println("Pinging service interrupted...");
+                    e.printStackTrace(System.out);
+                }
+            };
+            Runnable runnablePingBackup = () -> {
+                try {
+                    while (true) {
+                        gamePlayer.pingBackup();
+                        Thread.sleep(1000);
+                    }
+                } catch (InterruptedException | RemoteException e) {
+                    System.out.println("Pinging backup interrupted...");
+                    e.printStackTrace(System.out);
                 }
             };
             Runnable runnableReceivePing = () -> {
                 try {
-                    //TimeUnit.MILLISECONDS.wait(500);
                     while (true) {
-                        Thread.sleep(2001);
                         gamePlayer.receivePing();
+                        Thread.sleep(1100);
                     }
                 } catch (InterruptedException | RemoteException e) {
-                    System.out.println("Pinging service interrupted...");
+                    System.out.println("Receiving pinging service interrupted...");
+                    e.printStackTrace(System.out);
                 }
             };
             executor.execute(runnablePingServer);
+            executor.execute(runnablePingBackup);
             executor.execute(runnableReceivePing);
             Scanner keys = new Scanner(System.in);
             System.out.println("User action: ");

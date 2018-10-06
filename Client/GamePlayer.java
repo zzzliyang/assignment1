@@ -1,13 +1,16 @@
 import javafx.util.Pair;
 import org.apache.commons.lang3.SerializationUtils;
 
+import javax.swing.*;
 import java.rmi.ConnectException;
 import java.rmi.ConnectIOException;
 import java.rmi.RemoteException;
+import java.rmi.UnmarshalException;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class GamePlayer implements GamePlayerInterface {
+    
     protected String id;
     protected int N, K;
     // TODO: can be removed
@@ -21,10 +24,12 @@ public class GamePlayer implements GamePlayerInterface {
     protected TrackerInterface tracker;
     protected GameState gameState;
     private Set<String> livePlayers = new HashSet<>();
+    private JTextArea output;
 
-    public GamePlayer(String id, TrackerInterface tracker) {
+    public GamePlayer(String id, TrackerInterface tracker, JTextArea textArea) {
         this.id = id;
         this.tracker = tracker;
+        this.output = textArea;
     }
 
     public void setId(String id) {
@@ -147,12 +152,12 @@ public class GamePlayer implements GamePlayerInterface {
             System.out.println("This is server, initiating game state...");
             initiateGameState();
         } else {
-            System.out.println("This is player, getting game state from server...");
+            System.out.println("This is player, getting game state from server..." + players.get(0));
             this.serverPlayer = tracker.getPlayer(players.get(0));
             try {
                 this.gameState = serverPlayer.newPlayerJoined(id);
             } catch (ConnectException e) {
-                System.out.println("Failed to contact server... Set back up server as server...");
+                System.out.println("Failed to contact server..." + players.get(0) + " Set back up server as server..." + players.get(1));
                 this.serverPlayer = tracker.getPlayer(players.get(1));
                 this.gameState = serverPlayer.newPlayerJoined(id);
             }
@@ -180,6 +185,7 @@ public class GamePlayer implements GamePlayerInterface {
 
     @Override
     public synchronized GameState movePlayer(String id, int direction) throws RemoteException {
+        System.out.println("Server " + this.id + " is moving " + id + " direction: " + direction);
         Map<String, Pair<Integer, Integer>> playersLocation = gameState.getPlayersLocation();
         Pair<Integer, Integer> currentLocation = playersLocation.get(id);
         Map<String, Integer> playersScore = gameState.getPlayersScore();
@@ -248,7 +254,7 @@ public class GamePlayer implements GamePlayerInterface {
             GameState refresh;
             try {
                 refresh = serverPlayer.movePlayer(id, direction);
-            } catch (ConnectException | ConnectIOException e) {
+            } catch (ConnectException | ConnectIOException | UnmarshalException e) {
                 System.out.println("Server is down... Submit move request to backup server: " + gameState.getBackupPlayer());
                 if(gameState.getPlayerList().size()==1)
                     refresh = this.movePlayer(id, direction);
@@ -277,7 +283,8 @@ public class GamePlayer implements GamePlayerInterface {
                 List<String> playerList = gameState.getPlayerList();
                 System.out.println("Server is dead, update tracker with player list:");
                 playerList.forEach(System.out::println);
-                tracker.updateList(playerList);
+                System.out.println("Removing: " + deadServer);
+                tracker.removePlayer(deadServer);
                 gameState.setServerPlayer(id);
                 String backupPlayer = playerList.size() > 1 ? playerList.get(1) : null;
                 gameState.setBackupPlayer(backupPlayer);
@@ -286,9 +293,11 @@ public class GamePlayer implements GamePlayerInterface {
                 this.setServer(true);
                 this.setBackup(false);
                 if (backupPlayer != null) {
+                    System.out.println("Setting backup server to " + backupPlayer);
                     this.backupPlayer = tracker.getPlayer(backupPlayer);
                     notifyBackup();
                 } else {
+                    System.out.println("Setting backup server to null");
                     this.backupPlayer = null;
                 }
             } else {
@@ -332,7 +341,7 @@ public class GamePlayer implements GamePlayerInterface {
                 List<String> playerList = gameState.getPlayerList();
                 System.out.println("Backup is dead, update tracker with player list:");
                 playerList.forEach(System.out::println);
-                tracker.updateList(playerList);
+                tracker.removePlayer(deadBackup);
                 String backupPlayer = playerList.size() > 1 ? playerList.get(1) : null;
                 gameState.setBackupPlayer(backupPlayer);
                 if (backupPlayer != null) {
@@ -344,6 +353,8 @@ public class GamePlayer implements GamePlayerInterface {
             } else {
                 while (true) {
                     List<String> playerList = tracker.getPlayerList();
+                    playerList.forEach(System.out::print);
+                    System.out.println("checking whether tracker list has been updated");
                     String secondPlayer = playerList.get(1);
                     if (!secondPlayer.equals(deadBackup)) {
                         if (id.equals(secondPlayer)) {
@@ -388,7 +399,26 @@ public class GamePlayer implements GamePlayerInterface {
     @Override
     public void notifyBackup() throws RemoteException {
         if (backupPlayer != null) {
-            backupPlayer.updateGameStateFromServer(gameState);
+            String backup = gameState.getBackupPlayer();
+            System.out.println("Updating backup player " + backup);
+            try{
+                backupPlayer.updateGameStateFromServer(gameState);
+            } catch (RemoteException e){
+                System.out.println("Fail to notify pervious backup "+backup);
+                this.onPlayerExit(backup);
+                List<String> playerList = gameState.getPlayerList();
+                System.out.println("Backup is dead, update tracker with player list:");
+                playerList.forEach(System.out::println);
+                tracker.removePlayer(backup);
+                String backupPlayer = playerList.size() > 1 ? playerList.get(1) : null;
+                gameState.setBackupPlayer(backupPlayer);
+                if (backupPlayer != null) {
+                    this.backupPlayer = tracker.getPlayer(backupPlayer);
+                    notifyBackup();
+                } else {
+                    this.backupPlayer = null;
+                }
+            }
         }
     }
 
@@ -424,34 +454,43 @@ public class GamePlayer implements GamePlayerInterface {
                 .entrySet()
                 .forEach(
                         entry -> locationMap.put(entry.getValue(), entry.getKey())); // player with 2-char id
-
-        System.out.println("Game server is :" + currentState.getServerPlayer());
-        System.out.println("Backup server is :" + currentState.getBackupPlayer());
-        System.out.println("Current player: " + id + ", current score: " + coins);
+        printMessageln("Game server is :" + currentState.getServerPlayer());
+        printMessageln("Backup server is :" + currentState.getBackupPlayer());
+        printMessageln("Current player: " + id + ", current score: " + coins);
         for (int i = 0; i < 3 * N + 3; i++) {
-            System.out.print("=");
+            printMessage("=");
         }
-        System.out.println();
+        printMessageln("");
         for (int i = 0; i < N; i++) {
-            System.out.print("||");
+            printMessage("||");
             for (int j = 0; j < N; j++) {
                 Pair<Integer, Integer> key = new Pair<>(i, j);
-                System.out.print(locationMap.get(key));
-                System.out.print("|");
+                printMessage(locationMap.get(key));
+                printMessage("|");
             }
-            System.out.print("|");
-            System.out.println();
+            printMessage("|");
+            printMessageln("");
         }
         for (int i = 0; i < 3 * N + 3; i++) {
-            System.out.print("=");
+            printMessage("=");
         }
-        System.out.println();
+        printMessageln("");
 
-        System.out.println("Player scores:");
+        printMessageln("Player scores:");
         scores
                 .entrySet()
-                .forEach(s -> System.out.println("Player id: " + s.getKey() + ", score: " + s.getValue()));
-        System.out.println("End of player scores!");
+                .forEach(s -> printMessageln("Player id: " + s.getKey() + ", score: " + s.getValue()));
+        printMessageln("End of player scores!");
+    }
+
+    private void printMessage(String message) {
+        System.out.print(message);
+        output.append(message);
+    }
+
+    private void printMessageln(String message) {
+        System.out.println(message);
+        output.append(message + "\n");
     }
 
     private void onPlayerExit(String leftPlayer) throws RemoteException {
@@ -460,7 +499,7 @@ public class GamePlayer implements GamePlayerInterface {
         playerList.remove(leftPlayer);
         System.out.println("Player " + leftPlayer + " has left, remaining players: ");
         playerList.forEach(System.out::println);
-        tracker.updateList(playerList);
+        tracker.removePlayer(leftPlayer);
         List<Pair<Integer, Integer>> availableLocation = currentState.getAvailableLocation();
         Map<String, Pair<Integer, Integer>> playersLocation = currentState.getPlayersLocation();
         Map<String, Integer> playersScore = currentState.getPlayersScore();
@@ -468,10 +507,20 @@ public class GamePlayer implements GamePlayerInterface {
         availableLocation.add(currentLocation);
         playersLocation.remove(leftPlayer);
         playersScore.remove(leftPlayer);
+        if (isServer && currentState.getBackupPlayer().equals(leftPlayer)) {
+            if (playerList.size() > 1) {
+                String backupPlayer = playerList.get(1);
+                currentState.setBackupPlayer(backupPlayer);
+                this.backupPlayer = tracker.getPlayer(backupPlayer);
+            } else {
+                currentState.setBackupPlayer(null);
+                this.backupPlayer = tracker.getPlayer(null);
+            }
+        }
         this.setGameState(currentState);
     }
 
-    public void receivePing() throws RemoteException, InterruptedException {
+    public void receivePing() throws RemoteException {
         if (!isServer) return;
         List<String> playerList = gameState.getPlayerList();
         List<String> toCheck = playerList.subList(1, playerList.size());
@@ -479,10 +528,10 @@ public class GamePlayer implements GamePlayerInterface {
         for (String player: toCheck) System.out.println(player);
         System.out.println("live player set: ");
         for (String player: livePlayers) System.out.println(player);
+        System.out.println("Checked at time " + System.currentTimeMillis());
         if (livePlayers.size() != toCheck.size()) {
             for (String player: toCheck) {
                 if (!livePlayers.contains(player)) {
-                    System.out.println("Checked at time " + System.currentTimeMillis());
                     System.out.println("Player : " + player + " disconnected...");
                     this.onPlayerExit(player);
                     notifyBackup();

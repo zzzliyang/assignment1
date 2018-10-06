@@ -61,11 +61,13 @@ public class Tracker implements TrackerInterface {
 
     @Override
     public GamePlayerInterface getPlayer(String id) throws RemoteException {
+        //System.out.println("Trying to get id: " + id + " from players stubs: ");
+        //playerMap.keySet().forEach(System.out::println);
         return playerMap.get(id);
     }
 
     @Override
-    public NewJoinerPack addPlayer(String id, GamePlayerInterface player) throws RemoteException {
+    public synchronized NewJoinerPack addPlayer(String id, GamePlayerInterface player) throws RemoteException {
         System.out.println("Player + " + id + " is joining...");
         if (player != null) {
             playerList.add(id);
@@ -79,17 +81,22 @@ public class Tracker implements TrackerInterface {
     @Override
     public void removePlayer(String id) throws RemoteException {
         playerList.remove(id);
-        playerMap.remove(id);
+        System.out.println("Removing player " + id);
+        System.out.println("Current players: " + playerList.size());
+        for (String playerName: playerList) System.out.println("--------------" + playerName + "--------------");
+        /*playerMap.remove(id);*/
     }
 
     @Override
     public void updateList(List<String> players) throws RemoteException {
         playerList = players == null ? new ArrayList<>() : players;
         Set<String> set = new HashSet<>(playerMap.keySet());
-        set.forEach(id->{
+        /*set.forEach(id->{
             if(!playerList.contains(id))
                 playerMap.remove(id);
-        });
+        });*/
+        System.out.println("Received updates from server: " + playerList.size());
+        for (String playerName: playerList) System.out.println("--------------" + playerName + "--------------");
     }
 
     @Override
@@ -103,6 +110,7 @@ public class Tracker implements TrackerInterface {
     }
 
     public static void main(String args[]) {
+        //System.setProperty("java.rmi.server.hostname","localhost");
         TrackerInterface stub = null;
         Registry registry = null;
         if (args.length != 3) {
