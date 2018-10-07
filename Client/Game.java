@@ -109,7 +109,7 @@ public class Game {
                 try {
                     while (true) {
                         gamePlayer.receivePing();
-                        Thread.sleep(1100);
+                        Thread.sleep(1300);
                     }
                 } catch (InterruptedException | RemoteException e) {
                     System.out.println("Receiving pinging service interrupted...");

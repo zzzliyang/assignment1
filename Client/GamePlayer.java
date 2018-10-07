@@ -114,18 +114,22 @@ public class GamePlayer implements GamePlayerInterface {
         List<String> playerList = this.gameState.getPlayerList();
         playerList.add(newJoinerId);
         this.livePlayers.add(newJoinerId);
-        if (playerList.size() == 2) {
-            this.gameState.setBackupPlayer(newJoinerId);
-            this.setBackupPlayer(tracker.getPlayer(newJoinerId));
-        }
         List<Pair<Integer, Integer>> availableLocation = this.gameState.getAvailableLocation();
         int random = ThreadLocalRandom.current().nextInt(0, availableLocation.size());
         Map<String, Pair<Integer, Integer>> playersLocation = this.gameState.getPlayersLocation();
         playersLocation.put(newJoinerId, availableLocation.get(random));
+        System.out.println("New player " + newJoinerId + " location: " + availableLocation.get(random).getKey() + availableLocation.get(random).getValue());
         availableLocation.remove(random);
         Map<String, Integer> playersScore = this.gameState.getPlayersScore();
         playersScore.put(newJoinerId, 0);
-        notifyBackup();
+        if (playerList.size() == 2) {
+            this.gameState.setBackupPlayer(newJoinerId);
+            this.setBackupPlayer(tracker.getPlayer(newJoinerId));
+            System.out.println("New joiner " + newJoinerId + " is backup server.");
+        } else {
+            System.out.println("Notifying new joiner: " + newJoinerId + " to backup server " + this.gameState.getBackupPlayer());
+            notifyBackup();
+        }
         return SerializationUtils.clone(gameState);
     }
 
@@ -146,7 +150,7 @@ public class GamePlayer implements GamePlayerInterface {
         List<String> players = newJoinerPack.getPlayers();
         this.N = newJoinerPack.getN();
         this.K = newJoinerPack.getK();
-        if (players.size() == 1) {
+        if (players.size() == 1 || players.get(0).equals(id)) {
             this.setServer(true);
             this.serverPlayer = this;
             System.out.println("This is server, initiating game state...");
@@ -160,6 +164,7 @@ public class GamePlayer implements GamePlayerInterface {
                 System.out.println("Failed to contact server..." + players.get(0) + " Set back up server as server..." + players.get(1));
                 this.serverPlayer = tracker.getPlayer(players.get(1));
                 this.gameState = serverPlayer.newPlayerJoined(id);
+                System.out.println("Got location: " + this.gameState.getPlayersLocation().get(id));
             }
             String backupPlayer = gameState.getBackupPlayer();
             if(backupPlayer.equals(id)){
@@ -283,7 +288,7 @@ public class GamePlayer implements GamePlayerInterface {
                 List<String> playerList = gameState.getPlayerList();
                 System.out.println("Server is dead, update tracker with player list:");
                 playerList.forEach(System.out::println);
-                System.out.println("Removing: " + deadServer);
+                System.out.println(id + " is removing: " + deadServer);
                 tracker.removePlayer(deadServer);
                 gameState.setServerPlayer(id);
                 String backupPlayer = playerList.size() > 1 ? playerList.get(1) : null;
@@ -339,7 +344,8 @@ public class GamePlayer implements GamePlayerInterface {
             if (isServer) {
                 this.onPlayerExit(deadBackup);
                 List<String> playerList = gameState.getPlayerList();
-                System.out.println("Backup is dead, update tracker with player list:");
+                System.out.println("Backup is dead, " + id + " is update tracker to remove: " + deadBackup);
+                System.out.println("Currently live: ");
                 playerList.forEach(System.out::println);
                 tracker.removePlayer(deadBackup);
                 String backupPlayer = playerList.size() > 1 ? playerList.get(1) : null;
@@ -397,7 +403,7 @@ public class GamePlayer implements GamePlayerInterface {
     }
 
     @Override
-    public void notifyBackup() throws RemoteException {
+    public synchronized void notifyBackup() throws RemoteException {
         if (backupPlayer != null) {
             String backup = gameState.getBackupPlayer();
             System.out.println("Updating backup player " + backup);
@@ -407,7 +413,8 @@ public class GamePlayer implements GamePlayerInterface {
                 System.out.println("Fail to notify pervious backup "+backup);
                 this.onPlayerExit(backup);
                 List<String> playerList = gameState.getPlayerList();
-                System.out.println("Backup is dead, update tracker with player list:");
+                System.out.println("Backup is dead, " + id + " is update tracker to remove: " + backup);
+                System.out.println("Currently live: ");
                 playerList.forEach(System.out::println);
                 tracker.removePlayer(backup);
                 String backupPlayer = playerList.size() > 1 ? playerList.get(1) : null;
@@ -493,11 +500,12 @@ public class GamePlayer implements GamePlayerInterface {
         output.append(message + "\n");
     }
 
-    private void onPlayerExit(String leftPlayer) throws RemoteException {
+    private synchronized void onPlayerExit(String leftPlayer) throws RemoteException {
         GameState currentState = this.getGameState();
         List<String> playerList = currentState.getPlayerList();
         playerList.remove(leftPlayer);
-        System.out.println("Player " + leftPlayer + " has left, remaining players: ");
+        System.out.println("Player is dead, " + id + " is update tracker to remove: " + leftPlayer);
+        System.out.println("Currently live: ");
         playerList.forEach(System.out::println);
         tracker.removePlayer(leftPlayer);
         List<Pair<Integer, Integer>> availableLocation = currentState.getAvailableLocation();
