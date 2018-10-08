@@ -273,7 +273,10 @@ public class GamePlayer implements GamePlayerInterface {
 
     @Override
     public void pingServer() throws RemoteException {
-        if (isServer) return;
+        if (isServer) {
+          pingBackup();
+          return;
+        }
         String deadServer = gameState.getServerPlayer();
         System.out.println("Try pinging " + deadServer);
         System.out.println("Pinged at time " + System.currentTimeMillis());
@@ -332,7 +335,10 @@ public class GamePlayer implements GamePlayerInterface {
 
     @Override
     public void pingBackup() throws RemoteException {
-        if (isBackup) return;
+        if (isBackup) {
+          pingServer();
+          return;
+        }
         String deadBackup = gameState.getBackupPlayer();
         try {
             if(backupPlayer!=null) {
@@ -515,7 +521,7 @@ public class GamePlayer implements GamePlayerInterface {
         availableLocation.add(currentLocation);
         playersLocation.remove(leftPlayer);
         playersScore.remove(leftPlayer);
-        if (isServer && currentState.getBackupPlayer().equals(leftPlayer)) {
+        if (isServer && leftPlayer.equals(currentState.getBackupPlayer())) {
             if (playerList.size() > 1) {
                 String backupPlayer = playerList.get(1);
                 currentState.setBackupPlayer(backupPlayer);
