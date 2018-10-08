@@ -41,6 +41,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class Tracker implements TrackerInterface {
@@ -68,12 +69,12 @@ public class Tracker implements TrackerInterface {
 
     @Override
     public synchronized NewJoinerPack addPlayer(String id, GamePlayerInterface player) throws RemoteException {
-        System.out.println("Player + " + id + " is joining...");
+        System.out.println(new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())) + "Player + " + id + " is joining...");
         if (player != null) {
             playerList.add(id);
             playerMap.put(id, player);
         }
-        System.out.println("Current players: " + playerList.size());
+        System.out.println(new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())) + "Current players: " + playerList.size());
         for (String playerName: playerList) System.out.println("--------------" + playerName + "--------------");
         return new NewJoinerPack(playerList, N, K);
     }
@@ -81,8 +82,8 @@ public class Tracker implements TrackerInterface {
     @Override
     public void removePlayer(String id) throws RemoteException {
         playerList.remove(id);
-        System.out.println("Removing player " + id);
-        System.out.println("Current players: " + playerList.size());
+        System.out.println(new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())) + "Removing player " + id);
+        System.out.println(new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())) + "Current players: " + playerList.size());
         for (String playerName: playerList) System.out.println("--------------" + playerName + "--------------");
         /*playerMap.remove(id);*/
     }

@@ -8,8 +8,8 @@ import java.util.List;
  * Created by Rentong on 8/9/2018.
  */
 public interface GamePlayerInterface extends Remote {
-    void isAlive(String id) throws RemoteException;
-    void isAlive() throws RemoteException;
+    boolean isAlive(String id) throws RemoteException;
+    boolean isAlive() throws RemoteException;
 
     void joinGame(GamePlayerInterface stub) throws RemoteException;
 

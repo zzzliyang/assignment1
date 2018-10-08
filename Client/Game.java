@@ -82,26 +82,19 @@ public class Game {
             GamePlayer gamePlayer = new GamePlayer(id, tracker, textArea);
             stub = (GamePlayerInterface) UnicastRemoteObject.exportObject(gamePlayer, 0);
             gamePlayer.joinGame(stub);
-            ExecutorService executor = Executors.newFixedThreadPool(3);
+            ExecutorService executor = Executors.newFixedThreadPool(2);
             Runnable runnablePingServer = () -> {
                 try {
                     while (true) {
+                        long begin1 = System.currentTimeMillis();
                         gamePlayer.pingServer();
-                        Thread.sleep(1000);
+                        Thread.sleep(500);
+                        long begin2 = System.currentTimeMillis();
+                        gamePlayer.pingBackup();
+                        Thread.sleep(500);
                     }
                 } catch (InterruptedException | RemoteException e) {
                     System.out.println("Pinging service interrupted...");
-                    e.printStackTrace(System.out);
-                }
-            };
-            Runnable runnablePingBackup = () -> {
-                try {
-                    while (true) {
-                        gamePlayer.pingBackup();
-                        Thread.sleep(1000);
-                    }
-                } catch (InterruptedException | RemoteException e) {
-                    System.out.println("Pinging backup interrupted...");
                     e.printStackTrace(System.out);
                 }
             };
@@ -117,7 +110,6 @@ public class Game {
                 }
             };
             executor.execute(runnablePingServer);
-            executor.execute(runnablePingBackup);
             executor.execute(runnableReceivePing);
             Scanner keys = new Scanner(System.in);
             System.out.println("User action: ");

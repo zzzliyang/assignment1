@@ -1,3 +1,4 @@
+import javafx.concurrent.Task;
 import javafx.util.Pair;
 import org.apache.commons.lang3.SerializationUtils;
 
@@ -6,8 +7,9 @@ import java.rmi.ConnectException;
 import java.rmi.ConnectIOException;
 import java.rmi.RemoteException;
 import java.rmi.UnmarshalException;
+import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.*;
 
 public class GamePlayer implements GamePlayerInterface {
     
@@ -134,13 +136,15 @@ public class GamePlayer implements GamePlayerInterface {
     }
 
     @Override
-    public void isAlive(String id) throws RemoteException {
-        //System.out.println(id + " is alive...");
+    public boolean isAlive(String id) throws RemoteException {
+        System.out.println(id + " is alive..." + new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())));
         this.livePlayers.add(id);
+        return true;
     }
 
     @Override
-    public void isAlive() throws RemoteException {
+    public boolean isAlive() throws RemoteException {
+        return true;
     }
 
     @Override
@@ -275,17 +279,21 @@ public class GamePlayer implements GamePlayerInterface {
     public void pingServer() throws RemoteException {
         if (isServer) {
           pingBackup();
+          System.out.println("Instead try pinging backup");
           return;
         }
         String deadServer = gameState.getServerPlayer();
         System.out.println("Try pinging " + deadServer);
-        System.out.println("Pinged at time " + System.currentTimeMillis());
+        System.out.println("Pinged at time " + new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())));
         boolean wasBackup = isBackup;
         try {
-            serverPlayer.isAlive(id);
-            //System.out.println("Server is alive...");
-        } catch (RemoteException e) {
-            System.out.println("Server is down...");
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            Future<Boolean> future = executor.submit(() -> serverPlayer.isAlive(id));
+            System.out.println("Result: "+ future.get(200, TimeUnit.MILLISECONDS));
+            System.out.println("Server is alive..." + new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())));
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            System.out.println("Server is down..." + new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())));
+            e.printStackTrace(System.out);
             if (wasBackup) {
                 this.onPlayerExit(deadServer);
                 List<String> playerList = gameState.getPlayerList();
@@ -309,11 +317,13 @@ public class GamePlayer implements GamePlayerInterface {
                     this.backupPlayer = null;
                 }
             } else {
-                while (true) {
+//                if (true) {
                     List<String> playerList = tracker.getPlayerList();
                     String firstPlayer = playerList.get(0);
                     if (!firstPlayer.equals(deadServer)) {
                         playerList.forEach(System.out::print);
+                        this.gameState.setPlayerList(playerList);
+                        this.gameState.setServerPlayer(firstPlayer);
                         this.serverPlayer = tracker.getPlayer(firstPlayer);
                         System.out.println("The new server is : " + firstPlayer);
                         String backupPlayer = playerList.size() > 1 ? playerList.get(1) : null;
@@ -322,13 +332,17 @@ public class GamePlayer implements GamePlayerInterface {
                             if (id.equals(backupPlayer)) {
                                 this.backupPlayer = this;
                                 this.setBackup(true);
+                                this.gameState.setBackupPlayer(backupPlayer);
                             } else {
                                 this.backupPlayer = tracker.getPlayer(backupPlayer);
+                                this.gameState.setBackupPlayer(backupPlayer);
                             }
                         }
-                        break;
+//                        break;
+                    } else {
+                        System.out.println(new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())) + " players list not updated");
                     }
-                }
+//                }
             }
         }
     }
@@ -337,16 +351,21 @@ public class GamePlayer implements GamePlayerInterface {
     public void pingBackup() throws RemoteException {
         if (isBackup) {
           pingServer();
+          System.out.println("Instead try pinging backup");
           return;
         }
         String deadBackup = gameState.getBackupPlayer();
         try {
             if(backupPlayer!=null) {
-                backupPlayer.isAlive();
+                System.out.println("Try pinging backup" + deadBackup);
+                System.out.println("Pinged at time " + new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())));
+                ExecutorService executor = Executors.newSingleThreadExecutor();
+                Future<Boolean> future = executor.submit(() -> backupPlayer.isAlive());
+                System.out.println("Result: "+ future.get(200, TimeUnit.MILLISECONDS));
             }
             //System.out.println("Server is alive...");
-        } catch (RemoteException e) {
-            System.out.println("Backup server is down...");
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            System.out.println("Backup server is down..." + new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())));
             if (isServer) {
                 this.onPlayerExit(deadBackup);
                 List<String> playerList = gameState.getPlayerList();
@@ -363,21 +382,24 @@ public class GamePlayer implements GamePlayerInterface {
                     this.backupPlayer = null;
                 }
             } else {
-                while (true) {
+//                while (true) {
                     List<String> playerList = tracker.getPlayerList();
                     playerList.forEach(System.out::print);
                     System.out.println("checking whether tracker list has been updated");
                     String secondPlayer = playerList.get(1);
                     if (!secondPlayer.equals(deadBackup)) {
+                        this.gameState.setPlayerList(playerList);
                         if (id.equals(secondPlayer)) {
+                            this.gameState.setBackupPlayer(secondPlayer);
                             this.backupPlayer = this;
                             this.setBackup(true);
                         } else {
                             this.backupPlayer = tracker.getPlayer(secondPlayer);
+                            this.gameState.setBackupPlayer(secondPlayer);
                         }
-                        break;
+//                        break;
                     }
-                }
+//                }
             }
         }
     }
@@ -439,6 +461,7 @@ public class GamePlayer implements GamePlayerInterface {
     public boolean updateGameStateFromServer(GameState gameState) {
         try {
             this.gameState = gameState;
+            this.serverPlayer = tracker.getPlayer(gameState.getServerPlayer());
             if (gameState.getBackupPlayer().equals(id)) {
                 this.backupPlayer = this;
                 this.setBackup(true);
@@ -542,7 +565,7 @@ public class GamePlayer implements GamePlayerInterface {
         for (String player: toCheck) System.out.println(player);
         System.out.println("live player set: ");
         for (String player: livePlayers) System.out.println(player);
-        System.out.println("Checked at time " + System.currentTimeMillis());
+        System.out.println("Checked at time " + new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())));
         if (livePlayers.size() != toCheck.size()) {
             for (String player: toCheck) {
                 if (!livePlayers.contains(player)) {
