@@ -199,6 +199,12 @@ public class GamePlayer implements GamePlayerInterface {
         System.out.println("Server " + this.id + " is moving " + id + " direction: " + direction);
         Map<String, Pair<Integer, Integer>> playersLocation = gameState.getPlayersLocation();
         Pair<Integer, Integer> currentLocation = playersLocation.get(id);
+        if(currentLocation==null){
+            System.out.println("Location not found for player "+ id);
+            System.out.println("Current location map contains only: "+ id);
+            playersLocation.keySet().forEach(System.out::println);
+        }
+
         Map<String, Integer> playersScore = gameState.getPlayersScore();
         List<Pair<Integer, Integer>> availableLocation = gameState.getAvailableLocation();
         List<Pair<Integer, Integer>> coinsLocation = gameState.getCoinsLocation();
@@ -267,7 +273,8 @@ public class GamePlayer implements GamePlayerInterface {
                 refresh = serverPlayer.movePlayer(id, direction);
             } catch (ConnectException | ConnectIOException | UnmarshalException e) {
                 String deadServer = gameState.getServerPlayer();
-                System.out.println("Server" + deadServer + " is down... Submit move request to backup server: " + gameState.getBackupPlayer());
+                e.printStackTrace();
+                System.out.println("Server " + deadServer + " is down... Submit move request to backup server: " + gameState.getBackupPlayer());
                 if(this.gameState.getBackupPlayer().equals(this.id)) {
                     System.out.println("I am the new server server.");
                     this.onPlayerExit(deadServer);
@@ -301,15 +308,17 @@ public class GamePlayer implements GamePlayerInterface {
             }
             String newServer = refresh.getServerPlayer();
             String newBackup = refresh.getBackupPlayer();
+            System.out.println("New server player is " + newServer);
+            System.out.println("New backup player is " + newBackup);
             if (!newServer.equals(this.gameState.getServerPlayer())) {
               //TODO: can be replaced by updating refreshed server
-              serverPlayer = tracker.getPlayer(newServer);
+              this.serverPlayer = tracker.getPlayer(newServer);
             }
             if (newBackup == null) {
-              backupPlayer = null;
+              this.backupPlayer = null;
             } else if (!newBackup.equals(this.gameState.getBackupPlayer())) {
               //TODO: can be replaced by updating refreshed backup server
-              backupPlayer = tracker.getPlayer(newBackup);
+              this.backupPlayer = tracker.getPlayer(newBackup);
             }
             this.setGameState(refresh);
             printGameState();
@@ -319,8 +328,8 @@ public class GamePlayer implements GamePlayerInterface {
     @Override
     public void pingServer() throws RemoteException {
         if (isServer) {
-          pingBackup();
           System.out.println("Instead try pinging backup");
+          pingBackup();
           return;
         }
         String deadServer = gameState.getServerPlayer();
@@ -393,8 +402,8 @@ public class GamePlayer implements GamePlayerInterface {
     @Override
     public void pingBackup() throws RemoteException {
         if (isBackup) {
+          System.out.println("Instead try pinging server");
           pingServer();
-          System.out.println("Instead try pinging backup");
           return;
         }
         String deadBackup = gameState.getBackupPlayer();
@@ -480,7 +489,7 @@ public class GamePlayer implements GamePlayerInterface {
             try{
                 backupPlayer.updateGameStateFromServer(gameState);
             } catch (RemoteException e){
-                System.out.println("Fail to notify pervious backup "+backup);
+                System.out.println("Fail to notify previous backup "+backup);
                 this.onPlayerExit(backup);
                 List<String> playerList = gameState.getPlayerList();
                 System.out.println("Backup is dead, " + id + " is update tracker to remove: " + backup);
