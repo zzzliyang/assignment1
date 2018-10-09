@@ -91,7 +91,6 @@ public class Tracker implements TrackerInterface {
     @Override
     public void updateList(List<String> players) throws RemoteException {
         playerList = players == null ? new ArrayList<>() : players;
-        Set<String> set = new HashSet<>(playerMap.keySet());
         /*set.forEach(id->{
             if(!playerList.contains(id))
                 playerMap.remove(id);

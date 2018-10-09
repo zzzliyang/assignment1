@@ -130,6 +130,7 @@ public class GamePlayer implements GamePlayerInterface {
             System.out.println("New joiner " + newJoinerId + " is backup server.");
         } else {
             System.out.println("Notifying new joiner: " + newJoinerId + " to backup server " + this.gameState.getBackupPlayer());
+            tracker.updateList(playerList);
             notifyBackup();
         }
         return SerializationUtils.clone(gameState);
@@ -264,11 +265,50 @@ public class GamePlayer implements GamePlayerInterface {
             try {
                 refresh = serverPlayer.movePlayer(id, direction);
             } catch (ConnectException | ConnectIOException | UnmarshalException e) {
-                System.out.println("Server is down... Submit move request to backup server: " + gameState.getBackupPlayer());
-                if(gameState.getPlayerList().size()==1)
-                    refresh = this.movePlayer(id, direction);
-                else
+                String deadServer = gameState.getServerPlayer();
+                System.out.println("Server" + deadServer + " is down... Submit move request to backup server: " + gameState.getBackupPlayer());
+                if(this.gameState.getBackupPlayer().equals(this.id)) {
+                    System.out.println("I am the new server server.");
+                    this.onPlayerExit(deadServer);
+                    List<String> playerList = gameState.getPlayerList();
+                    System.out.println("Update tracker with player list:");
+                    playerList.forEach(System.out::println);
+                    System.out.println(id + " is removing: " + deadServer);
+                    tracker.removePlayer(deadServer);
+                    this.gameState.setServerPlayer(this.id);
+                    String backupPlayer = playerList.size() > 1 ? playerList.get(1) : null;
+                    this.gameState.setBackupPlayer(backupPlayer);
+                    this.serverPlayer = this;
+                    this.livePlayers = new HashSet<>(playerList);
+                    this.setServer(true);
+                    this.setBackup(false);
+                    if (backupPlayer != null) {
+                      System.out.println("I'm setting backup server to " + backupPlayer);
+                      this.backupPlayer = tracker.getPlayer(backupPlayer);
+                      notifyBackup();
+                    } else {
+                      System.out.println("I'm setting backup server to null");
+                      this.backupPlayer = null;
+                    }
+                    movePlayer(id, direction);
+                    printGameState();
+                    return;
+                }
+                else {
                     refresh = backupPlayer.movePlayer(id, direction);
+                }
+            }
+            String newServer = refresh.getServerPlayer();
+            String newBackup = refresh.getBackupPlayer();
+            if (!newServer.equals(this.gameState.getServerPlayer())) {
+              //TODO: can be replaced by updating refreshed server
+              serverPlayer = tracker.getPlayer(newServer);
+            }
+            if (newBackup == null) {
+              backupPlayer = null;
+            } else if (!newBackup.equals(this.gameState.getBackupPlayer())) {
+              //TODO: can be replaced by updating refreshed backup server
+              backupPlayer = tracker.getPlayer(newBackup);
             }
             this.setGameState(refresh);
             printGameState();
@@ -317,7 +357,7 @@ public class GamePlayer implements GamePlayerInterface {
                     this.backupPlayer = null;
                 }
             } else {
-//                if (true) {
+                //while (true) {
                     List<String> playerList = tracker.getPlayerList();
                     String firstPlayer = playerList.get(0);
                     if (!firstPlayer.equals(deadServer)) {
@@ -338,11 +378,11 @@ public class GamePlayer implements GamePlayerInterface {
                                 this.gameState.setBackupPlayer(backupPlayer);
                             }
                         }
-//                        break;
+                        //break;
                     } else {
                         System.out.println(new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())) + " players list not updated");
                     }
-//                }
+                //}
             }
         }
     }
@@ -382,12 +422,11 @@ public class GamePlayer implements GamePlayerInterface {
                     this.backupPlayer = null;
                 }
             } else {
-//                while (true) {
+                //while (true) {
                     List<String> playerList = tracker.getPlayerList();
-                    playerList.forEach(System.out::print);
-                    System.out.println("checking whether tracker list has been updated");
                     String secondPlayer = playerList.get(1);
                     if (!secondPlayer.equals(deadBackup)) {
+                        System.out.println("Tracker list has been updated" + new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())));
                         this.gameState.setPlayerList(playerList);
                         if (id.equals(secondPlayer)) {
                             this.gameState.setBackupPlayer(secondPlayer);
@@ -397,9 +436,9 @@ public class GamePlayer implements GamePlayerInterface {
                             this.backupPlayer = tracker.getPlayer(secondPlayer);
                             this.gameState.setBackupPlayer(secondPlayer);
                         }
-//                        break;
+                        //break;
                     }
-//                }
+                //}
             }
         }
     }

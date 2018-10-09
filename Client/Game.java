@@ -76,7 +76,7 @@ public class Game {
             panel.setSize(783,750);
             jFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
             jFrame.setLayout(null);
-            jFrame.setVisible(true);
+            //jFrame.setVisible(true);
             Registry registry = LocateRegistry.getRegistry(host);
             TrackerInterface tracker = (TrackerInterface) registry.lookup("TRACKER");
             GamePlayer gamePlayer = new GamePlayer(id, tracker, textArea);
@@ -88,10 +88,10 @@ public class Game {
                     while (true) {
                         long begin1 = System.currentTimeMillis();
                         gamePlayer.pingServer();
-                        Thread.sleep(500);
+                        Thread.sleep(500 - begin1 % 500);
                         long begin2 = System.currentTimeMillis();
                         gamePlayer.pingBackup();
-                        Thread.sleep(500);
+                        Thread.sleep(500 - begin2 % 500);
                     }
                 } catch (InterruptedException | RemoteException e) {
                     System.out.println("Pinging service interrupted...");
