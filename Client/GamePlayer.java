@@ -378,6 +378,8 @@ public class GamePlayer implements GamePlayerInterface {
                                 this.gameState.setBackupPlayer(backupPlayer);
                             }
                         }
+                        System.out.println("Pinging the new server.");
+                        this.serverPlayer.isAlive(id);
                         //break;
                     } else {
                         System.out.println(new SimpleDateFormat("mm:ss:SS").format(new Date(System.currentTimeMillis())) + " players list not updated");
@@ -443,7 +445,7 @@ public class GamePlayer implements GamePlayerInterface {
         }
     }
 
-    public void initiateGameState() {
+    public synchronized void initiateGameState() {
         List<Pair<Integer, Integer>> availableLocations = new ArrayList<>();
         List<Pair<Integer, Integer>> coinsLocation = new ArrayList<>();
         for (int i = 0; i < N; i++) {
