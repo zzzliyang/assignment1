@@ -113,6 +113,7 @@ public class GamePlayer implements GamePlayerInterface {
 
     @Override
     public synchronized GameState newPlayerJoined(String newJoinerId) throws RemoteException {
+        System.out.println(newJoinerId + " is joining game.");
         List<String> playerList = this.gameState.getPlayerList();
         playerList.add(newJoinerId);
         this.livePlayers.add(newJoinerId);
@@ -120,7 +121,7 @@ public class GamePlayer implements GamePlayerInterface {
         int random = ThreadLocalRandom.current().nextInt(0, availableLocation.size());
         Map<String, Pair<Integer, Integer>> playersLocation = this.gameState.getPlayersLocation();
         playersLocation.put(newJoinerId, availableLocation.get(random));
-        System.out.println("New player " + newJoinerId + " location: " + availableLocation.get(random).getKey() + availableLocation.get(random).getValue());
+        System.out.println("New player " + newJoinerId + " location size: " + availableLocation.size() + " random: " + random);
         availableLocation.remove(random);
         Map<String, Integer> playersScore = this.gameState.getPlayersScore();
         playersScore.put(newJoinerId, 0);
